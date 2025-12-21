@@ -375,18 +375,18 @@ Recommended: create an admin group, grant ACEs to the group, then assign players
 # server.cfg
 
 # 1) Grant permissions to the group
-add_ace group.admin admin.player allow
-add_ace group.admin admin.vehicles allow
-add_ace group.admin admin.weapons allow
-add_ace group.admin admin.world allow
-add_ace group.admin admin.time_weather allow
-add_ace group.admin admin.misc allow
-add_ace group.admin admin.appearance allow
-add_ace group.admin admin.debug allow
+add_ace group.cq.admin admin.player allow
+add_ace group.cq.admin admin.vehicles allow
+add_ace group.cq.admin admin.weapons allow
+add_ace group.cq.admin admin.world allow
+add_ace group.cq.admin admin.time_weather allow
+add_ace group.cq.admin admin.misc allow
+add_ace group.cq.admin admin.appearance allow
+add_ace group.cq.admin admin.debug allow
 
 # 2) Assign players to the admin group (FiveM identifier)
-add_principal identifier.fivem:1234567 group.admin
-add_principal identifier.fivem:7654321 group.admin
+add_principal identifier.fivem:1234567 group.cq.admin
+add_principal identifier.fivem:7654321 group.cq.admin
 ```
 
 Notes
