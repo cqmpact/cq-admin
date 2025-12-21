@@ -1,0 +1,15 @@
+{
+  "name": "cq-admin",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Admin menu for FiveM",
+  "license": "MPL-2.0",
+  "scripts": {
+    "lint": "eslint \"client/*.js\" \"html/*.js\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^8.57.1",
+    "eslint": "^8.57.1",
+    "globals": "^13.0.0"
+  }
+}
