@@ -516,12 +516,6 @@ searchInput.addEventListener("input", () => {
   renderEffectList();
 });
 
-document.getElementById("btnActiveToTop").addEventListener("click", () => {
-  state.activeToTop = !state.activeToTop;
-  document.getElementById("btnActiveToTop").classList.toggle("ui-btn-toggle", state.activeToTop);
-  renderEffectList();
-});
-
 document.getElementById("btnCollapseAll").addEventListener("click", () => {
   const collectGroups = (arr, out) => {
     for (const x of arr || []) {
