@@ -10,8 +10,8 @@ Contributors
 ]]
 
 -- luacheck: max_line_length 200
--- luacheck: globals _validateGrant
-
+-- luacheck: globals CQAdmin
+local ValidateGrant = (CQAdmin and CQAdmin._internal and CQAdmin._internal.validateGrant) or function() return false end
 RegisterAdminCategory('misc', {
     build = function()
         return {
@@ -126,7 +126,7 @@ RegisterNUICallback('cq-admin:cb:speedoKMH', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:speedoKMH', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'speedoKMH') then return end
     _speedoKMH = enabled and true or false
     if notify then notify('info', ('Speedometer KM/H: %s'):format(_speedoKMH and 'ON' or 'OFF')) end
 end)
@@ -138,7 +138,7 @@ RegisterNUICallback('cq-admin:cb:speedoMPH', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:speedoMPH', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'speedoMPH') then return end
     _speedoMPH = enabled and true or false
     if notify then notify('info', ('Speedometer MPH: %s'):format(_speedoMPH and 'ON' or 'OFF')) end
 end)
@@ -150,7 +150,7 @@ RegisterNUICallback('cq-admin:cb:showCoords', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:showCoords', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'showCoords') then return end
     _showCoords = enabled and true or false
     if notify then notify('info', ('Show Coordinates: %s'):format(_showCoords and 'ON' or 'OFF')) end
 end)
@@ -162,7 +162,7 @@ RegisterNUICallback('cq-admin:cb:hideHUD', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:hideHUD', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'hideHUD') then return end
     _hideHUD = enabled and true or false
     DisplayHud(not _hideHUD)
     if notify then notify('info', ('Hide HUD: %s'):format(_hideHUD and 'ON' or 'OFF')) end
@@ -175,7 +175,7 @@ RegisterNUICallback('cq-admin:cb:hideRadar', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:hideRadar', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'hideRadar') then return end
     _hideRadar = enabled and true or false
     DisplayRadar(not _hideRadar)
     if notify then notify('info', ('Hide Radar: %s'):format(_hideRadar and 'ON' or 'OFF')) end
@@ -188,7 +188,7 @@ RegisterNUICallback('cq-admin:cb:showLocation', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:showLocation', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'showLocation') then return end
     _showLocation = enabled and true or false
     if notify then notify('info', ('Show Location: %s'):format(_showLocation and 'ON' or 'OFF')) end
 end)
@@ -200,7 +200,7 @@ RegisterNUICallback('cq-admin:cb:showTime', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:showTime', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'showTime') then return end
     _showTime = enabled and true or false
     if notify then notify('info', ('Show Time: %s'):format(_showTime and 'ON' or 'OFF')) end
 end)
@@ -212,7 +212,7 @@ RegisterNUICallback('cq-admin:cb:nightVision', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:nightVision', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'nightVision') then return end
     _nightVision = enabled and true or false
     SetNightvision(_nightVision)
     if notify then notify('info', ('Night Vision: %s'):format(_nightVision and 'ON' or 'OFF')) end
@@ -225,7 +225,7 @@ RegisterNUICallback('cq-admin:cb:thermalVision', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:thermalVision', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'thermalVision') then return end
     _thermalVision = enabled and true or false
     SetSeethrough(_thermalVision)
     if notify then notify('info', ('Thermal Vision: %s'):format(_thermalVision and 'ON' or 'OFF')) end
@@ -238,7 +238,7 @@ RegisterNUICallback('cq-admin:cb:lockCamX', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:lockCamX', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'lockCamX') then return end
     _lockCamX = enabled and true or false
     if notify then notify('info', ('Lock Camera Horizontal: %s'):format(_lockCamX and 'ON' or 'OFF')) end
 end)
@@ -250,7 +250,7 @@ RegisterNUICallback('cq-admin:cb:lockCamY', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:lockCamY', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'lockCamY') then return end
     _lockCamY = enabled and true or false
     if notify then notify('info', ('Lock Camera Vertical: %s'):format(_lockCamY and 'ON' or 'OFF')) end
 end)
@@ -261,7 +261,7 @@ RegisterNUICallback('cq-admin:cb:clearArea', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:clearArea', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'clearArea') then return end
     local ped = (U and U.ped and U.ped()) or PlayerPedId()
     local coords = GetEntityCoords(ped)
     local radius = 100.0
@@ -310,3 +310,5 @@ CreateThread(function()
         end
     end
 end)
+
+

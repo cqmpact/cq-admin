@@ -73,3 +73,4 @@ RegisterNetEvent('cq-admin:sv:deleteNearby', function(entType, radius)
     if r > 200.0 then r = 200.0 end
     issueGrant(src, 'deleteNearby', 'cq-admin:cl:deleteNearby', t, r)
 end)
+

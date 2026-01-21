@@ -10,8 +10,8 @@ Contributors
 ]]
 
 -- luacheck: max_line_length 200
--- luacheck: globals _validateGrant
-
+-- luacheck: globals CQAdmin
+local ValidateGrant = (CQAdmin and CQAdmin._internal and CQAdmin._internal.validateGrant) or function() return false end
 
 RegisterAdminCategory('time_weather', {
     build = function()
@@ -75,7 +75,7 @@ RegisterNUICallback('cq-admin:cb:freezeTime', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:freezeTime', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'freezeTime') then return end
     _freezeTime = enabled and true or false
     if notify then notify('info', ('Freeze Time: %s'):format(_freezeTime and 'ON' or 'OFF')) end
 end)
@@ -122,7 +122,7 @@ local function _applyWeather(weather, showNotify)
 end
 
 RegisterNetEvent('cq-admin:cl:setTime', function(reqId, time, showNotify)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'setTime') then return end
     _applyTime(time, showNotify)
 end)
 
@@ -145,7 +145,7 @@ RegisterNUICallback('cq-admin:cb:setWeather', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:setWeather', function(reqId, weather, showNotify)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'setWeather') then return end
     _applyWeather(weather, showNotify)
 end)
 
@@ -156,3 +156,5 @@ end)
 RegisterNetEvent('cq-admin:cl:broadcastSetWeather', function(weather, initiatorSrc)
     _applyWeather(weather, initiatorSrc == _getMyServerId())
 end)
+
+

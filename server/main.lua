@@ -103,7 +103,7 @@ AddEventHandler('onResourceStart', function(res)
     checkForUpdates()
 end)
 
-GROUPS = {
+local GROUPS = {
     spawnVehicle = 'admin.vehicles',
     fixVehicle   = 'admin.vehicles',
     cleanVehicle = 'admin.vehicles',
@@ -186,6 +186,10 @@ GROUPS = {
 }
 
 local _capReqAt = {}
+local _menuOpen = {}
+local _actionCooldown = {}
+local _logQueue = {}
+local _logFlushAt = 0
 local _denyCooldown = {}
 local _openMenuAt = {}
 local _ackAt = {}
@@ -194,8 +198,129 @@ local CAP_REQ_WINDOW_MS = GetConvarInt('cqadmin_cap_req_window_ms', 2000)
 local DENY_COOLDOWN_MS = GetConvarInt('cqadmin_deny_cooldown_ms', 2000)
 local OPEN_MENU_WINDOW_MS = GetConvarInt('cqadmin_open_menu_window_ms', 1000)
 local HANDSHAKE_WINDOW_MS = GetConvarInt('cqadmin_grant_handshake_window_ms', 50)
+local CAP_OPEN_WINDOW_MS = GetConvarInt('cqadmin_cap_open_window_ms', 300000)
+local LOG_INTERVAL_MS = GetConvarInt('cqadmin_log_interval_ms', 30000)
+local DISCORD_WEBHOOK = GetConvar('cqadmin_discord_webhook', '')
 
-function hasGroup(src, group)
+local ACTION_COOLDOWNS = {
+    spawnObject = GetConvarInt('cqadmin_cd_spawn_object_ms', 1000),
+    spawnObjectAt = GetConvarInt('cqadmin_cd_spawn_object_at_ms', 1000),
+    deleteNearby = GetConvarInt('cqadmin_cd_delete_nearby_ms', 2000),
+    spawnVehicle = GetConvarInt('cqadmin_cd_spawn_vehicle_ms', 2000),
+    spawnVehicleGizmo = GetConvarInt('cqadmin_cd_spawn_vehicle_gizmo_ms', 2000),
+    spawnVehicleAt = GetConvarInt('cqadmin_cd_spawn_vehicle_at_ms', 2000),
+    spawnWeaponByName = GetConvarInt('cqadmin_cd_spawn_weapon_ms', 500),
+    giveWeapon = GetConvarInt('cqadmin_cd_give_weapon_ms', 500),
+    removeAllWeapons = GetConvarInt('cqadmin_cd_remove_weapons_ms', 2000),
+}
+
+local function _truncate(s, maxLen)
+    if type(s) ~= 'string' then s = tostring(s or '') end
+    if #s <= maxLen then return s end
+    return s:sub(1, maxLen) .. '...'
+end
+
+local function _nowLocal()
+    return os.time()
+end
+
+local function _cleanValue(v)
+    local s = _truncate(tostring(v or ''), 300)
+    s = s:gsub('`', "'")
+    return s
+end
+
+local function _summarizePayload(value)
+    if type(value) == 'table' then
+        local ok, encoded = pcall(json.encode, value)
+        if ok and type(encoded) == 'string' then
+            return _truncate(encoded, 300)
+        end
+    end
+    return _truncate(tostring(value or ''), 300)
+end
+
+local function _queueLog(severity, msg, meta)
+    local sev = tostring(severity or 'info'):lower()
+    if sev ~= 'info' and sev ~= 'warn' and sev ~= 'error' then sev = 'info' end
+    local entry = {
+        ts_unix = _nowLocal(),
+        sev = sev,
+        msg = tostring(msg or ''),
+        meta = meta,
+    }
+    _logQueue[#_logQueue + 1] = entry
+end
+
+local function _sevRank(sev)
+    if sev == 'error' then return 3 end
+    if sev == 'warn' then return 2 end
+    return 1
+end
+
+local function _formatLogLine(e)
+    local icon = (e.sev == 'error' and ':red_circle:') or (e.sev == 'warn' and ':warning:') or ':white_circle:'
+    local ts = tonumber(e.ts_unix) or _nowLocal()
+    local timeTag = ('<t:%d:F>'):format(ts)
+    local meta = type(e.meta) == 'table' and e.meta or {}
+    local actionOrMsg = meta.action or e.msg or ''
+    local name = meta.name or ''
+    local line1 = ('%s %s'):format(icon, timeTag)
+    local line2 = ('%s - %s'):format(e.sev:upper(), _cleanValue(actionOrMsg))
+    if name ~= '' then
+        line2 = line2 .. (' - %s'):format(_cleanValue(name))
+    end
+
+    local parts = {}
+    if meta.src ~= nil and meta.src ~= '' then parts[#parts + 1] = ('src=`%s`'):format(_cleanValue(meta.src)) end
+    if meta.reqId ~= nil and meta.reqId ~= '' then parts[#parts + 1] = ('reqId=`%s`'):format(_cleanValue(meta.reqId)) end
+    if meta.group ~= nil and meta.group ~= '' then parts[#parts + 1] = ('group=`%s`'):format(_cleanValue(meta.group)) end
+    if meta.reason ~= nil and meta.reason ~= '' then parts[#parts + 1] = ('reason=`%s`'):format(_cleanValue(meta.reason)) end
+    if meta.payload ~= nil and meta.payload ~= '' then parts[#parts + 1] = ('payload=`%s`'):format(_cleanValue(meta.payload)) end
+    if meta.action and meta.action ~= e.msg and e.msg and e.msg ~= '' then
+        parts[#parts + 1] = ('msg=`%s`'):format(_cleanValue(e.msg))
+    end
+    local line3 = ''
+    if #parts > 0 then
+        line3 = table.concat(parts, '\n')
+    end
+
+    local block = line1 .. '\n' .. line2
+    if line3 ~= '' then
+        block = block .. '\n' .. line3
+    end
+    return _truncate(block, 1800), _sevRank(e.sev)
+end
+
+local function _flushLogs()
+    if type(DISCORD_WEBHOOK) ~= 'string' or DISCORD_WEBHOOK == '' then
+        _logQueue = {}
+        return
+    end
+    if #_logQueue == 0 then return end
+    local messages = {}
+    local current = ''
+    for i = 1, #_logQueue do
+        local entry = _logQueue[i]
+        local line = _formatLogLine(entry)
+        if current == '' then
+            current = line
+        elseif (#current + 2 + #line) > 1900 then
+            messages[#messages + 1] = current
+            current = line
+        else
+            current = current .. '\n\n' .. line
+        end
+    end
+    if current ~= '' then messages[#messages + 1] = current end
+    _logQueue = {}
+    for _, msg in ipairs(messages) do
+        PerformHttpRequest(DISCORD_WEBHOOK, function() end, 'POST',
+            json.encode({ content = msg }), { ['Content-Type'] = 'application/json' })
+    end
+end
+
+local function hasGroup(src, group)
     local isAllowed = IsPlayerAceAllowed(src, group)
     if GetConvarInt('cqadmin_debug', 0) == 1 then
         print(('Check group %s for src %d -> %s'):format(group, tonumber(src) or -1, tostring(isAllowed)))
@@ -203,11 +328,11 @@ function hasGroup(src, group)
     return isAllowed
 end
 
-function notify(src, level, msg, ok)
+local function notify(src, level, msg, ok)
     TriggerClientEvent('cq-admin:cl:notify', src, { type = level or 'info', message = msg or '', ok = ok })
 end
 
-function deny(src, action, group)
+local function deny(src, action, group)
     local now = GetGameTimer()
     local last = _denyCooldown[src] or 0
     if (now - last) >= DENY_COOLDOWN_MS then
@@ -215,6 +340,7 @@ function deny(src, action, group)
         if GetConvarInt('cqadmin_debug', 0) == 1 then
             print(('[cq-admin] Denied %s for %s (requires group %s)'):format(action, GetPlayerName(src) or ('src '..tostring(src)), group))
         end
+        _queueLog('warn', 'Permission denied', { action = action, group = group, src = src, name = GetPlayerName(src) or '' })
         _denyCooldown[src] = now
     end
 end
@@ -254,7 +380,21 @@ local function _grantRemove(id)
     _grantsTotalCount = math.max(0, _grantsTotalCount - 1)
 end
 
-function issueGrant(src, action, clientEvent, ...)
+local function issueGrant(src, action, clientEvent, ...)
+    if type(action) == 'string' and ACTION_COOLDOWNS[action] and ACTION_COOLDOWNS[action] > 0 then
+        _actionCooldown[src] = _actionCooldown[src] or {}
+        local now = GetGameTimer()
+        local last = _actionCooldown[src][action] or 0
+        if (now - last) < ACTION_COOLDOWNS[action] then
+            if GetConvarInt('cqadmin_debug', 0) == 1 then
+                print(('[cq-admin] Throttled %s from src %d'):format(action, src))
+            end
+            _queueLog('warn', 'Action throttled', { action = action, src = src, name = GetPlayerName(src) or '' })
+            notify(src, 'error', 'Too many pending actions, please wait a moment', false)
+            return
+        end
+        _actionCooldown[src][action] = now
+    end
     local payload = { ... }
     local reqId = _newReqId()
     local otp = _newOtp()
@@ -265,6 +405,7 @@ function issueGrant(src, action, clientEvent, ...)
             print(('[cq-admin] Refusing grant (%s) for src %d: capacity exceeded (src=%d/%d, total=%d/%d)')
                 :format(action or 'unknown', tonumber(src) or -1, bySrc, MAX_GRANTS_PER_SRC, _grantsTotalCount, MAX_GRANTS_TOTAL))
         end
+        _queueLog('warn', 'Grant refused: capacity exceeded', { action = action, src = src, name = GetPlayerName(src) or '' })
         notify(src, 'error', 'Too many pending actions, please wait a moment', false)
         return
     end
@@ -272,6 +413,19 @@ function issueGrant(src, action, clientEvent, ...)
     _grantCountBySrc[src] = bySrc + 1
     _grantsTotalCount = _grantsTotalCount + 1
     TriggerClientEvent('cq-admin:cl:grant', src, reqId, action, otp)
+    if type(action) == 'string' then
+        local parts = {}
+        for i = 1, #payload do
+            parts[#parts + 1] = _summarizePayload(payload[i])
+        end
+        _queueLog('info', 'Grant issued', {
+            action = action,
+            src = src,
+            name = GetPlayerName(src) or '',
+            reqId = reqId,
+            payload = table.concat(parts, ', ')
+        })
+    end
 end
 
 RegisterNetEvent('cq-admin:sv:ack', function(reqId, otp)
@@ -282,19 +436,44 @@ RegisterNetEvent('cq-admin:sv:ack', function(reqId, otp)
     _ackAt[src] = now
 
     local grant = _grants[reqId]
-    if not grant then return end
-    if grant.src ~= src then _grantRemove(reqId); return end
-    if grant.otp ~= otp then _grantRemove(reqId); return end
-    if grant.exp and grant.exp < now then _grantRemove(reqId); return end
+    if not grant then
+        _queueLog('warn', 'Grant ack rejected', { reason = 'missing', src = src, name = GetPlayerName(src) or '', reqId = reqId })
+        return
+    end
+    if grant.src ~= src then
+        _queueLog('warn', 'Grant ack rejected', { reason = 'wrong_src', src = src, name = GetPlayerName(src) or '', reqId = reqId })
+        _grantRemove(reqId)
+        return
+    end
+    if grant.otp ~= otp then
+        _queueLog('warn', 'Grant ack rejected', { reason = 'bad_otp', src = src, name = GetPlayerName(src) or '', reqId = reqId })
+        _grantRemove(reqId)
+        return
+    end
+    if grant.exp and grant.exp < now then
+        _queueLog('warn', 'Grant ack rejected', { reason = 'expired', src = src, name = GetPlayerName(src) or '', reqId = reqId })
+        _grantRemove(reqId)
+        return
+    end
     grant.ready = true
     TriggerClientEvent(grant.clientEvent, src, reqId, table.unpack(grant.payload or {}))
+    _queueLog('info', 'Grant acknowledged', { action = grant.action, src = src, name = GetPlayerName(src) or '', reqId = reqId })
 end)
 
-RegisterNetEvent('cq-admin:sv:use', function(reqId)
+CQAdmin = CQAdmin or {}
+CQAdmin._internal = CQAdmin._internal or {}
+CQAdmin._internal.hasGroup = hasGroup
+CQAdmin._internal.deny = deny
+CQAdmin._internal.issueGrant = issueGrant
+CQAdmin._internal.notify = notify
+CQAdmin._internal.GROUPS = GROUPS
+
+RegisterNetEvent('cq-admin:sv:use', function(reqId, action)
     local src = source
     local now = GetGameTimer()
     local last = _useAt[src] or 0
     if (now - last) < HANDSHAKE_WINDOW_MS then
+        _queueLog('warn', 'Grant use throttled', { action = action, src = src, name = GetPlayerName(src) or '', reqId = reqId })
         TriggerClientEvent('cq-admin:cl:used', src, reqId, false)
         return
     end
@@ -303,8 +482,22 @@ RegisterNetEvent('cq-admin:sv:use', function(reqId)
     local grant = _grants[reqId]
     local ok = false
     if grant and grant.src == src and grant.ready and (not grant.exp or grant.exp >= now) then
+        if type(action) ~= 'string' or action == '' or action ~= grant.action then
+            _grantRemove(reqId)
+            TriggerClientEvent('cq-admin:cl:used', src, reqId, false)
+            return
+        end
         ok = true
         _grantRemove(reqId)
+    end
+    if ok then
+        local name = GetPlayerName(src) or ('src '..tostring(src))
+        _queueLog('info', 'Action used', { action = action, src = src, name = name, reqId = reqId })
+        if action == 'openMenu' then
+            _menuOpen[src] = GetGameTimer() + CAP_OPEN_WINDOW_MS
+        end
+    else
+        _queueLog('warn', 'Action failed', { action = action, src = src, name = GetPlayerName(src) or '', reqId = reqId })
     end
     TriggerClientEvent('cq-admin:cl:used', src, reqId, ok)
 end)
@@ -315,10 +508,16 @@ RegisterNetEvent('cq-admin:sv:requestCapabilities', function()
     local src = source
     local now = GetGameTimer()
     local last = _capReqAt[src] or 0
+    local allowUntil = _menuOpen[src] or 0
+    if allowUntil < now then
+        _queueLog('warn', 'Capabilities request blocked', { src = src, name = GetPlayerName(src) or '' })
+        return
+    end
     if (now - last) < CAP_REQ_WINDOW_MS then
         if GetConvarInt('cqadmin_debug', 0) == 1 then
             print(('[cq-admin] Throttled requestCapabilities from src %d'):format(src))
         end
+        _queueLog('warn', 'Capabilities request throttled', { src = src, name = GetPlayerName(src) or '' })
         return
     end
     _capReqAt[src] = now
@@ -333,6 +532,19 @@ RegisterNetEvent('cq-admin:sv:requestCapabilities', function()
         appearance = hasGroup(src, 'admin.appearance') or false,
     }
     TriggerClientEvent('cq-admin:cl:setCapabilities', src, caps)
+    _queueLog('info', 'Capabilities delivered', { src = src, name = GetPlayerName(src) or '' })
+end)
+
+RegisterNetEvent('cq-admin:sv:menuOpened', function()
+    local src = source
+    _menuOpen[src] = GetGameTimer() + CAP_OPEN_WINDOW_MS
+    _queueLog('info', 'Menu opened', { src = src, name = GetPlayerName(src) or '' })
+end)
+
+RegisterNetEvent('cq-admin:sv:menuClosed', function()
+    local src = source
+    _menuOpen[src] = nil
+    _queueLog('info', 'Menu closed', { src = src, name = GetPlayerName(src) or '' })
 end)
 
 RegisterNetEvent('cq-admin:sv:openMenuRequest', function(srcOverride)
@@ -347,6 +559,7 @@ RegisterNetEvent('cq-admin:sv:openMenuRequest', function(srcOverride)
         if GetConvarInt('cqadmin_debug', 0) == 1 then
             print(('[cq-admin] Throttled openMenuRequest from src %d'):format(src))
         end
+        _queueLog('warn', 'openMenu throttled', { src = src, name = GetPlayerName(src) or '' })
         return
     end
     _openMenuAt[src] = now
@@ -364,6 +577,7 @@ RegisterNetEvent('cq-admin:sv:openMenuRequest', function(srcOverride)
     for _, v in ipairs(caps) do if v then allowed = true break end end
     if not allowed then
         deny(src, 'openMenu', 'any admin.* group')
+        _queueLog('warn', 'openMenu denied', { src = src, name = GetPlayerName(src) or '' })
         return
     end
     issueGrant(src, 'openMenu', 'cq-admin:cl:open')
@@ -386,10 +600,23 @@ AddEventHandler('playerDropped', function()
     _openMenuAt[src] = nil
     _ackAt[src] = nil
     _useAt[src] = nil
+    _menuOpen[src] = nil
+    _actionCooldown[src] = nil
     for id, g in pairs(_grants) do
         if g.src == src then
             _grantRemove(id)
         end
     end
     _grantCountBySrc[src] = nil
+end)
+
+CreateThread(function()
+    while true do
+        Wait(500)
+        local now = GetGameTimer()
+        if (now - _logFlushAt) >= LOG_INTERVAL_MS then
+            _logFlushAt = now
+            _flushLogs()
+        end
+    end
 end)

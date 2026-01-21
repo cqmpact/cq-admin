@@ -45,3 +45,4 @@ RegisterNetEvent('cq-admin:sv:setPedPreset', function(model)
     end
     issueGrant(src, 'setPedPreset', 'cq-admin:cl:setPedPreset', model)
 end)
+

@@ -10,8 +10,8 @@ Contributors
 ]]
 
 -- luacheck: max_line_length 300
--- luacheck: globals _validateGrant World3dToScreen2d
-
+-- luacheck: globals CQAdmin
+local ValidateGrant = (CQAdmin and CQAdmin._internal and CQAdmin._internal.validateGrant) or function() return false end
 debugState = debugState or {
     coords = false,
     ids = false,
@@ -188,7 +188,7 @@ local function startDebugThread()
 end
 
 RegisterNetEvent('cq-admin:cl:debugToggle', function(reqId, kind, enabled, radius)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'debugToggle') then return end
     if kind == 'coords' then debugState.coords = enabled
     elseif kind == 'ids' then debugState.ids = enabled
     elseif kind == 'bbox' then debugState.bbox = enabled
@@ -256,3 +256,5 @@ RegisterNUICallback('cq-admin:cb:debugRadius', function(data, cb)
     TriggerServerEvent('cq-admin:sv:debugToggle', 'radius', true, r)
     cb({ ok = true })
 end)
+
+

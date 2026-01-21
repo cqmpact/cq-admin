@@ -206,3 +206,4 @@ RegisterNetEvent('cq-admin:sv:suicide', function()
     if not hasGroup(src, group) then return deny(src, 'suicide', group) end
     issueGrant(src, 'suicide', 'cq-admin:cl:suicide')
 end)
+

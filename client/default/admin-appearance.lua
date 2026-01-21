@@ -10,8 +10,8 @@ Contributors
 ]]
 
 -- luacheck: max_line_length 200
--- luacheck: globals _validateGrant
-
+-- luacheck: globals CQAdmin
+local ValidateGrant = (CQAdmin and CQAdmin._internal and CQAdmin._internal.validateGrant) or function() return false end
 RegisterAdminCategory('appearance', {
     build = function()
         return {
@@ -112,7 +112,7 @@ RegisterNUICallback('cq-admin:cb:spawnPedByName', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:spawnPedByName', function(reqId, model)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'spawnPedByName') then return end
     if not model or model == '' then
         return (notify and notify('error', 'Invalid ped model'))
     end
@@ -134,7 +134,7 @@ RegisterNUICallback('cq-admin:cb:resetPed', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:resetPed', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'resetPed') then return end
     local defaultModel = 'mp_m_freemode_01'
     local ok, hash = loadModel(defaultModel)
     if ok then
@@ -185,7 +185,7 @@ RegisterNUICallback('cq-admin:cb:applyPedAnimal', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:setPedPreset', function(reqId, model)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'setPedPreset') then return end
     if not model or model == '' then
         return (notify and notify('error', 'Invalid ped model'))
     end
@@ -200,3 +200,5 @@ RegisterNetEvent('cq-admin:cl:setPedPreset', function(reqId, model)
 
     if notify then notify('success', ('Ped model set to: %s'):format(model)) end
 end)
+
+

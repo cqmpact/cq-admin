@@ -9,21 +9,36 @@ Contributors
 |         |                             |        |
 */
 
+@font-face {
+  font-family: "ProggyClean";
+  src: url("fonts/ProggyClean.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --bg: rgba(20, 22, 26, 0.92);
-  --bg2: rgba(14, 16, 20, 0.92);
-  --panel: rgba(28, 31, 37, 0.95);
-  --border: rgba(110, 120, 135, 0.35);
-  --border2: rgba(110, 120, 135, 0.2);
-  --text: rgba(235, 238, 244, 0.92);
-  --muted: rgba(235, 238, 244, 0.6);
-  --accent: rgba(86, 145, 235, 0.9);
-  --accent2: rgba(86, 145, 235, 0.25);
+  --bg: rgba(15, 15, 15, 0.94);
+  --bg2: rgba(18, 18, 18, 0.94);
+  --panel: rgba(22, 22, 22, 0.96);
+  --border: rgba(110, 110, 128, 0.5);
+  --border2: rgba(110, 110, 128, 0.35);
+  --text: rgba(220, 220, 220, 0.98);
+  --muted: rgba(220, 220, 220, 0.55);
+  --accent: rgba(66, 150, 250, 0.95);
+  --accent2: rgba(66, 150, 250, 0.35);
   --danger: rgba(220, 90, 90, 0.9);
-  --shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
-  --radius: 6px;
-  --font: 13px/1.25 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-  "Liberation Mono", "Courier New", monospace;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --radius: 3px;
+  --frame-bg: rgba(26, 26, 26, 0.54);
+  --frame-bg-hovered: rgba(56, 56, 56, 0.54);
+  --frame-bg-active: rgba(66, 150, 250, 0.45);
+  --header: rgba(66, 150, 250, 0.31);
+  --header-hovered: rgba(66, 150, 250, 0.8);
+  --header-active: rgba(66, 150, 250, 1);
+  --title-bg: rgba(10, 10, 10, 0.94);
+  --title-bg-active: rgba(30, 30, 30, 0.94);
+  --font: 13px/1.25 "ProggyClean", "Cousine", "Consolas", "Courier New", monospace;
 }
 
 * {
@@ -42,6 +57,19 @@ body {
   color: var(--text);
   overflow: hidden;
   background: transparent;
+}
+
+#imguiCanvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline: none;
+}
+
+#imguiCanvas.hidden {
+  display: none;
 }
 
 .hidden {
@@ -79,13 +107,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
-  background: rgba(0, 0, 0, 0.18);
+  padding: 4px 6px;
+  background: var(--title-bg);
   border-bottom: 1px solid var(--border2);
 }
 
 .ui-title {
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text);
   letter-spacing: 0.2px;
 }
 
@@ -117,7 +145,7 @@ body {
   border: 1px solid var(--border);
   border-left: 4px solid var(--accent);
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   box-shadow: var(--shadow);
   min-width: 220px;
 }
@@ -165,10 +193,10 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--frame-bg);
   border: 1px solid var(--border2);
-  border-radius: 4px;
-  padding: 6px 8px;
+  border-radius: var(--radius);
+  padding: 4px 6px;
 }
 
 .ui-search-icon {
@@ -202,7 +230,7 @@ body {
 
 .ui-list::-webkit-scrollbar,
 .ui-detail-scroll::-webkit-scrollbar {
-  width: 12px;
+  width: 10px;
   background: rgba(0, 0, 0, 0.15);
 }
 .ui-list::-webkit-scrollbar-track,
@@ -213,7 +241,7 @@ body {
 }
 .ui-list::-webkit-scrollbar-thumb,
 .ui-detail-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   border: 3px solid rgba(0, 0, 0, 0.15);
   transition: background 0.2s ease;
@@ -228,21 +256,21 @@ body {
   grid-template-columns: 1fr;
   gap: 8px;
   align-items: center;
-  padding: 10px 8px;
-  border-radius: 5px;
+  padding: 8px 6px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.12s ease, border-color 0.12s ease;
   border: 1px solid transparent;
 }
 
 .effect-row:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(110, 120, 135, 0.25);
+  background: var(--frame-bg-hovered);
+  border-color: var(--border2);
 }
 
 .effect-row.selected {
-  background: rgba(86, 145, 235, 0.20);
-  border-color: rgba(86, 145, 235, 0.45);
+  background: var(--header);
+  border-color: var(--accent2);
 }
 
 .effect-name {
@@ -252,7 +280,7 @@ body {
 }
 
 .effect-title {
-  color: rgba(255, 255, 255, 0.94);
+  color: var(--text);
   font-weight: 500;
   letter-spacing: 0.2px;
 }
@@ -268,22 +296,22 @@ body {
   width: 18px;
   height: 18px;
   border: 2px solid var(--border);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius);
+  background: var(--frame-bg);
   display: inline-grid;
   place-items: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
 .ui-check:hover {
-  border-color: rgba(110, 120, 135, 0.6);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(110, 110, 128, 0.75);
+  background: var(--frame-bg-hovered);
 }
 
 .ui-check.on {
-  background: rgba(86, 145, 235, 0.30);
-  border-color: rgba(86, 145, 235, 0.7);
+  background: var(--frame-bg-active);
+  border-color: var(--accent);
 }
 
 .ui-check.on::after {
@@ -299,9 +327,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--border2);
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--title-bg-active);
   min-width: 0;
 }
 
@@ -321,10 +349,10 @@ body {
 /* Groups (collapsible) */
 .group {
   border: 1px solid var(--border2);
-  border-radius: 6px;
+  border-radius: var(--radius);
   overflow: hidden;
   margin-bottom: 12px;
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--panel);
   transition: border-color 0.2s ease;
 }
 
@@ -337,15 +365,15 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px;
-  background: rgba(86, 145, 235, 0.16);
+  padding: 8px 10px;
+  background: var(--header);
   cursor: pointer;
   transition: background 0.2s ease;
   user-select: none;
 }
 
 .group-header:hover {
-  background: rgba(86, 145, 235, 0.22);
+  background: var(--header-hovered);
 }
 
 .group-header .left {
@@ -356,7 +384,7 @@ body {
 }
 
 .group-title {
-  color: rgba(255, 255, 255, 0.94);
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -373,7 +401,7 @@ body {
 }
 
 .group-body {
-  padding: 14px 12px;
+  padding: 10px 10px;
   display: grid;
   gap: 12px;
 }
@@ -408,31 +436,30 @@ body {
 .ui-btn,
 .ui-iconbtn {
   font: inherit;
-  color: rgba(255, 255, 255, 0.92);
-  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  background: var(--frame-bg);
   border: 1px solid var(--border2);
-  border-radius: 5px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.12s ease, border-color 0.12s ease;
   font-weight: 500;
 }
 
 .ui-btn {
-  padding: 7px 12px;
+  padding: 5px 10px;
   letter-spacing: 0.2px;
 }
 
 .ui-btn:hover,
 .ui-iconbtn:hover {
-  background: rgba(255, 255, 255, 0.10);
-  border-color: rgba(110, 120, 135, 0.5);
-  transform: translateY(-1px);
+  background: var(--frame-bg-hovered);
+  border-color: rgba(110, 110, 128, 0.6);
 }
 
 .ui-btn:active,
 .ui-iconbtn:active {
-  transform: translateY(0px);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--frame-bg-active);
+  border-color: var(--accent);
 }
 
 .ui-btn-wide {
@@ -440,13 +467,13 @@ body {
 }
 
 .ui-btn-toggle[aria-pressed="true"] {
-  background: rgba(86, 145, 235, 0.22);
-  border-color: rgba(86, 145, 235, 0.55);
+  background: var(--frame-bg-active);
+  border-color: var(--accent);
 }
 
 .ui-iconbtn {
-  width: 32px;
-  height: 30px;
+  width: 28px;
+  height: 24px;
   display: grid;
   place-items: center;
   font-size: 14px;
@@ -454,23 +481,23 @@ body {
 
 /* Toggle/pressed state for icon buttons */
 .ui-iconbtn[aria-pressed="true"] {
-  background: rgba(86, 145, 235, 0.22);
-  border-color: rgba(86, 145, 235, 0.55);
+  background: var(--frame-bg-active);
+  border-color: var(--accent);
 }
 
 .pill {
   display: inline-block;
   padding: 1px 6px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  background: var(--frame-bg);
+  border: 1px solid var(--border2);
 }
 
 .ui-range {
   width: 100%;
   height: 6px;
   border-radius: 3px;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--frame-bg);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
@@ -482,14 +509,13 @@ body {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: rgba(86, 145, 235, 0.9);
+  background: var(--accent);
   cursor: pointer;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.15s ease;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  transition: transform 0.12s ease;
 }
 
 .ui-range::-webkit-slider-thumb:hover {
-  background: rgba(86, 145, 235, 1);
   transform: scale(1.1);
 }
 
@@ -497,94 +523,93 @@ body {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: rgba(86, 145, 235, 0.9);
+  background: var(--accent);
   cursor: pointer;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.15s ease;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  transition: transform 0.12s ease;
 }
 
 .ui-range::-moz-range-thumb:hover {
-  background: rgba(86, 145, 235, 1);
   transform: scale(1.1);
 }
 
 .ui-num {
   width: 90px;
-  padding: 7px 10px;
-  border-radius: 5px;
+  padding: 5px 8px;
+  border-radius: var(--radius);
   border: 1px solid var(--border2);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--frame-bg);
   color: var(--text);
   font: inherit;
   outline: none;
   user-select: text;
-  transition: all 0.15s ease;
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
 .ui-num:focus {
-  border-color: rgba(86, 145, 235, 0.6);
-  background: rgba(0, 0, 0, 0.35);
+  border-color: var(--accent);
+  background: var(--frame-bg-hovered);
 }
 
 .ui-select {
   width: 100%;
-  padding: 7px 10px;
-  border-radius: 5px;
+  padding: 5px 8px;
+  border-radius: var(--radius);
   border: 1px solid var(--border2);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--frame-bg);
   color: var(--text);
   font: inherit;
   outline: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
 .ui-select:hover {
-  border-color: rgba(110, 120, 135, 0.5);
+  border-color: rgba(110, 110, 128, 0.6);
 }
 
 .ui-select:focus {
-  border-color: rgba(86, 145, 235, 0.6);
-  background: rgba(0, 0, 0, 0.35);
+  border-color: var(--accent);
+  background: var(--frame-bg-hovered);
 }
 
 .ui-text {
   width: 100%;
-  padding: 7px 10px;
-  border-radius: 5px;
+  padding: 5px 8px;
+  border-radius: var(--radius);
   border: 1px solid var(--border2);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--frame-bg);
   color: var(--text);
   font: inherit;
   outline: none;
   user-select: text;
   min-width: 0;
-  transition: all 0.15s ease;
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
 .ui-text:focus {
-  border-color: rgba(86, 145, 235, 0.6);
-  background: rgba(0, 0, 0, 0.35);
+  border-color: var(--accent);
+  background: var(--frame-bg-hovered);
 }
 
 .ui-textarea {
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 5px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
   border: 1px solid var(--border2);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--frame-bg);
   color: var(--text);
   font: inherit;
   outline: none;
   user-select: text;
   min-width: 0;
   resize: vertical;
-  transition: all 0.15s ease;
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
 .ui-textarea:focus {
-  border-color: rgba(86, 145, 235, 0.6);
-  background: rgba(0, 0, 0, 0.35);
+  border-color: var(--accent);
+  background: var(--frame-bg-hovered);
 }
 
 /* Color Picker */
@@ -597,7 +622,7 @@ body {
   width: 40px;
   height: 30px;
   border: 2px solid var(--border);
-  border-radius: 5px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: all 0.15s ease;
   background-size: 8px 8px;
@@ -608,8 +633,7 @@ body {
 }
 
 .color-preview:hover {
-  border-color: rgba(86, 145, 235, 0.6);
-  transform: scale(1.05);
+  border-color: var(--accent);
 }
 
 .color-picker-popup {
@@ -617,7 +641,7 @@ body {
   z-index: 2001;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 14px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
   min-width: 280px;
@@ -672,9 +696,9 @@ body {
 
 .color-input-value {
   padding: 6px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   border: 1px solid var(--border2);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--frame-bg);
   color: var(--text);
   font: inherit;
   outline: none;
@@ -682,7 +706,7 @@ body {
 }
 
 .color-input-value:focus {
-  border-color: rgba(86, 145, 235, 0.6);
+  border-color: var(--accent);
 }
 
 .color-picker-actions {
@@ -698,10 +722,10 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 8px 10px;
   border-top: 1px solid var(--border2);
-  background: rgba(0, 0, 0, 0.18);
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
+  background: var(--title-bg);
+  box-shadow: none;
 }
 
 .ui-toggle {

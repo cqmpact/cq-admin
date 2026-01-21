@@ -10,8 +10,8 @@ Contributors
 ]]
 
 -- luacheck: max_line_length 300
--- luacheck: globals _validateGrant
-
+-- luacheck: globals CQAdmin
+local ValidateGrant = (CQAdmin and CQAdmin._internal and CQAdmin._internal.validateGrant) or function() return false end
 RegisterAdminCategory('world', {
     build = function()
         return {
@@ -87,7 +87,7 @@ local function deleteEntitiesOfType(entType, radius)
 end
 
 RegisterNetEvent('cq-admin:cl:deleteNearby', function(reqId, entType, radius)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'deleteNearby') then return end
     local cnt = deleteEntitiesOfType(entType, radius)
     if notify then notify('success', ('Deleted %d %s within %.0fm'):format(cnt, entType, tonumber(radius) or 0)) end
 end)
@@ -103,3 +103,5 @@ RegisterNUICallback('cq-admin:cb:deleteNearbyPeds', function(data, cb)
     TriggerServerEvent('cq-admin:sv:deleteNearby', 'peds', radius)
     cb({ ok = true })
 end)
+
+

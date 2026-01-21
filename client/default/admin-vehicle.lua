@@ -10,10 +10,103 @@ Contributors
 ]]
 
 -- luacheck: max_line_length 400
--- luacheck: globals _validateGrant
+-- luacheck: globals CQAdmin
+local ValidateGrant = (CQAdmin and CQAdmin._internal and CQAdmin._internal.validateGrant) or function() return false end
+local VEH_REFRESH_MS = 1500
+local _veh_last_hash = ''
+local _veh_state = {
+    inVehicle = false,
+    engineOn = false,
+    invincible = false,
+    invisible = false,
+    neonEnabled = false,
+    neonColor = { r = 255, g = 0, b = 0 },
+    primaryColor = { r = 255, g = 0, b = 0 },
+    secondaryColor = { r = 0, g = 0, b = 255 },
+}
+
+local function _getVehicleState()
+    local ped = PlayerPedId()
+    local veh = GetVehiclePedIsIn(ped, false)
+    if veh == 0 then
+        return {
+            inVehicle = false,
+            engineOn = false,
+            invincible = false,
+            invisible = false,
+            neonEnabled = false,
+            neonColor = { r = 255, g = 0, b = 0 },
+            primaryColor = { r = 255, g = 0, b = 0 },
+            secondaryColor = { r = 0, g = 0, b = 255 },
+        }
+    end
+
+    local nr, ng, nb = GetVehicleNeonLightsColour(veh)
+    local pr, pg, pb = GetVehicleCustomPrimaryColour(veh)
+    local sr, sg, sb = GetVehicleCustomSecondaryColour(veh)
+    local neon_on = false
+    for i = 0, 3 do
+        if IsVehicleNeonLightEnabled(veh, i) then
+            neon_on = true
+            break
+        end
+    end
+
+    return {
+        inVehicle = true,
+        engineOn = GetIsVehicleEngineRunning(veh),
+        invincible = GetEntityCanBeDamaged(veh) == false,
+        invisible = not IsEntityVisible(veh),
+        neonEnabled = neon_on,
+        neonColor = { r = nr or 255, g = ng or 0, b = nb or 0 },
+        primaryColor = { r = pr or 255, g = pg or 0, b = pb or 0 },
+        secondaryColor = { r = sr or 0, g = sg or 0, b = sb or 255 },
+    }
+end
+
+local function _veh_state_hash(s)
+    return table.concat({
+        s.inVehicle and 1 or 0,
+        s.engineOn and 1 or 0,
+        s.invincible and 1 or 0,
+        s.invisible and 1 or 0,
+        s.neonEnabled and 1 or 0,
+        s.neonColor.r, s.neonColor.g, s.neonColor.b,
+        s.primaryColor.r, s.primaryColor.g, s.primaryColor.b,
+        s.secondaryColor.r, s.secondaryColor.g, s.secondaryColor.b,
+    }, ':')
+end
+
+local function _refreshVehicleState(force)
+    local s = _getVehicleState()
+    local h = _veh_state_hash(s)
+    if h ~= _veh_last_hash then
+        _veh_last_hash = h
+        _veh_state = s
+        if type(CQAdmin_RequestMenuRefresh) == 'function' then
+            CQAdmin_RequestMenuRefresh()
+        end
+        return
+    end
+    if force and type(CQAdmin_RequestMenuRefresh) == 'function' then
+        _veh_state = s
+        CQAdmin_RequestMenuRefresh()
+    end
+end
+
+CreateThread(function()
+    while true do
+        Wait(VEH_REFRESH_MS)
+        local open = type(CQAdmin_IsMenuOpen) == 'function' and CQAdmin_IsMenuOpen()
+        _refreshVehicleState(open)
+    end
+end)
 
 RegisterAdminCategory('vehicles', {
     build = function()
+        local s = _getVehicleState()
+        _veh_state = s
+        local disableVeh = not s.inVehicle
         return {
             id = "vehicles",
             label = "Vehicles",
@@ -38,28 +131,44 @@ RegisterAdminCategory('vehicles', {
                     id = "veh_features",
                     type = "group",
                     label = "Vehicle features",
+                    disabled = disableVeh,
+                    disabledReason = "Sit in a vehicle to use these features.",
                     children = {
-                        { label = "Toggle engine", type = "button", buttonLabel = "Toggle", callback = "cq-admin:cb:toggleEngine" },
-                        { label = "Toggle vehicle visibility", type = "toggle", key = "veh_invis", callback = "cq-admin:cb:vehicleInvisible", default = false },
-                        { label = "Max vehicle performance", type = "button", buttonLabel = "Max", callback = "cq-admin:cb:maxPerformance" },
-                        { label = "Set license plate", type = "inputButton", placeholder = "ADMIN", buttonLabel = "Set", callback = "cq-admin:cb:setLicensePlate", payloadKey = "plate" },
-                        { label = "Open all doors", type = "button", buttonLabel = "Open", callback = "cq-admin:cb:openAllDoors" },
-                        { label = "Close all doors", type = "button", buttonLabel = "Close", callback = "cq-admin:cb:closeAllDoors" },
-                        { label = "Pop all windows", type = "button", buttonLabel = "Pop", callback = "cq-admin:cb:popAllWindows" },
+                        { label = "Toggle engine", type = "button", buttonLabel = "Toggle", callback = "cq-admin:cb:toggleEngine", disabled = disableVeh },
+                        { label = "Toggle vehicle visibility", type = "toggle", key = "veh_invis", callback = "cq-admin:cb:vehicleInvisible", default = false, disabled = disableVeh },
+                        { label = "Max vehicle performance", type = "button", buttonLabel = "Max", callback = "cq-admin:cb:maxPerformance", disabled = disableVeh },
+                        { label = "Set license plate", type = "inputButton", placeholder = "ADMIN", buttonLabel = "Set", callback = "cq-admin:cb:setLicensePlate", payloadKey = "plate", disabled = disableVeh },
+                        { label = "Open all doors", type = "button", buttonLabel = "Open", callback = "cq-admin:cb:openAllDoors", disabled = disableVeh },
+                        { label = "Close all doors", type = "button", buttonLabel = "Close", callback = "cq-admin:cb:closeAllDoors", disabled = disableVeh },
+                        { label = "Pop all windows", type = "button", buttonLabel = "Pop", callback = "cq-admin:cb:popAllWindows", disabled = disableVeh },
                     }
                 },
                 {
                     id = "veh_mods",
                     type = "group",
                     label = "Vehicle modifications",
+                    disabled = disableVeh,
+                    disabledReason = "Sit in a vehicle to use these modifications.",
                     children = {
-                        { label = "Set neon color", type = "colorPicker", key = "neon_color", callback = "cq-admin:cb:setNeonColor", default = { r = 255, g = 0, b = 0 } },
-                        { label = "Enable neon lights", type = "toggle", key = "neon_t", callback = "cq-admin:cb:enableNeon", default = false },
-                        { label = "Set primary color", type = "colorPicker", key = "primary_color", callback = "cq-admin:cb:setPrimaryColor", default = { r = 255, g = 0, b = 0 } },
-                        { label = "Set secondary color", type = "colorPicker", key = "secondary_color", callback = "cq-admin:cb:setSecondaryColor", default = { r = 0, g = 0, b = 255 } },
+                        { label = "Set neon color", type = "colorPicker", key = "neon_color", callback = "cq-admin:cb:setNeonColor", default = { r = 255, g = 0, b = 0 }, disabled = disableVeh },
+                        { label = "Enable neon lights", type = "toggle", key = "neon_t", callback = "cq-admin:cb:enableNeon", default = false, disabled = disableVeh },
+                        { label = "Set primary color", type = "colorPicker", key = "primary_color", callback = "cq-admin:cb:setPrimaryColor", default = { r = 255, g = 0, b = 0 }, disabled = disableVeh },
+                        { label = "Set secondary color", type = "colorPicker", key = "secondary_color", callback = "cq-admin:cb:setSecondaryColor", default = { r = 0, g = 0, b = 255 }, disabled = disableVeh },
                     }
                 }
             }
+        }
+    end,
+    values = function()
+        local s = _getVehicleState()
+        _veh_state = s
+        return {
+            veh_god = s.invincible,
+            veh_invis = s.invisible,
+            neon_t = s.neonEnabled,
+            neon_color = s.neonColor,
+            primary_color = s.primaryColor,
+            secondary_color = s.secondaryColor,
         }
     end
 })
@@ -90,7 +199,7 @@ end)
 local vehGodMode = false
 
 RegisterNetEvent('cq-admin:cl:spawnVehicle', function(reqId, model)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'spawnVehicle') then return end
     local ped = PlayerPedId()
     if not model or model == '' then
         return (notify and notify('error', 'Invalid vehicle model'))
@@ -120,7 +229,7 @@ RegisterNetEvent('cq-admin:cl:spawnVehicle', function(reqId, model)
 end)
 
 RegisterNetEvent('cq-admin:cl:toggleGodMode', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'toggleGodMode') then return end
     vehGodMode = enabled and true or false
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
@@ -133,7 +242,7 @@ RegisterNetEvent('cq-admin:cl:toggleGodMode', function(reqId, enabled)
 end)
 
 RegisterNetEvent('cq-admin:cl:fixVehicle', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'fixVehicle') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -144,7 +253,7 @@ RegisterNetEvent('cq-admin:cl:fixVehicle', function(reqId)
 end)
 
 RegisterNetEvent('cq-admin:cl:cleanVehicle', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'cleanVehicle') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -154,7 +263,7 @@ RegisterNetEvent('cq-admin:cl:cleanVehicle', function(reqId)
 end)
 
 RegisterNetEvent('cq-admin:cl:deleteVehicle', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'deleteVehicle') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -164,7 +273,7 @@ RegisterNetEvent('cq-admin:cl:deleteVehicle', function(reqId)
 end)
 
 RegisterNetEvent('cq-admin:cl:flipVehicle', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'flipVehicle') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -174,7 +283,7 @@ RegisterNetEvent('cq-admin:cl:flipVehicle', function(reqId)
 end)
 
 RegisterNetEvent('cq-admin:cl:warpIntoNearest', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'warpIntoNearest') then return end
     local ped = PlayerPedId()
     local pCoords = GetEntityCoords(ped)
     local handle, veh = FindFirstVehicle()
@@ -242,7 +351,7 @@ RegisterNUICallback('cq-admin:cb:toggleEngine', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:toggleEngine', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'toggleEngine') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -260,7 +369,7 @@ RegisterNUICallback('cq-admin:cb:vehicleInvisible', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:vehicleInvisible', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'vehicleInvisible') then return end
     _vehicleInvisible = enabled and true or false
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
@@ -276,7 +385,7 @@ RegisterNUICallback('cq-admin:cb:maxPerformance', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:maxPerformance', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'maxPerformance') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -299,7 +408,7 @@ RegisterNUICallback('cq-admin:cb:setLicensePlate', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:setLicensePlate', function(reqId, plate)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'setLicensePlate') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -313,7 +422,7 @@ RegisterNUICallback('cq-admin:cb:openAllDoors', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:openAllDoors', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'openAllDoors') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -329,7 +438,7 @@ RegisterNUICallback('cq-admin:cb:closeAllDoors', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:closeAllDoors', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'closeAllDoors') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -345,7 +454,7 @@ RegisterNUICallback('cq-admin:cb:popAllWindows', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:popAllWindows', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'popAllWindows') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -365,7 +474,7 @@ RegisterNUICallback('cq-admin:cb:setNeonColor', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:setNeonColor', function(reqId, color)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'setNeonColor') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -394,7 +503,7 @@ RegisterNUICallback('cq-admin:cb:enableNeon', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:enableNeon', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'enableNeon') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -416,7 +525,7 @@ RegisterNUICallback('cq-admin:cb:setPrimaryColor', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:setPrimaryColor', function(reqId, color)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'setPrimaryColor') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -448,7 +557,7 @@ RegisterNUICallback('cq-admin:cb:setSecondaryColor', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:setSecondaryColor', function(reqId, color)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'setSecondaryColor') then return end
     local ped = PlayerPedId()
     local veh = GetVehiclePedIsIn(ped, false)
     if veh == 0 then return (notify and notify('error', 'Not in a vehicle')) end
@@ -469,3 +578,5 @@ RegisterNetEvent('cq-admin:cl:setSecondaryColor', function(reqId, color)
     SetVehicleCustomSecondaryColour(veh, r, g, b)
     if notify then notify('success', ('Secondary color set to RGB(%d,%d,%d)'):format(r, g, b)) end
 end)
+
+

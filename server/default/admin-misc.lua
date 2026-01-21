@@ -108,3 +108,4 @@ RegisterNetEvent('cq-admin:sv:clearArea', function()
     _miscCooldown[src] = now
     issueGrant(src, 'clearArea', 'cq-admin:cl:clearArea')
 end)
+

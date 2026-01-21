@@ -415,36 +415,37 @@ const cancelPlacement = () => {
 };
 
 const __grants = new Map();
-const __grantAdd = (reqId, ttlMs = 15000) => {
-  if (!reqId) return;
-  __grants.set(reqId, GetGameTimer() + ttlMs);
+const __grantAdd = (reqId, action, ttlMs = 15000) => {
+  if (!reqId || !action) return;
+  __grants.set(reqId, { exp: GetGameTimer() + ttlMs, action });
 };
-const __grantConsume = (reqId) => {
-  if (!reqId) return false;
-  const exp = __grants.get(reqId);
-  if (!exp) return false;
+const __grantConsume = (reqId, action) => {
+  if (!reqId || !action) return false;
+  const entry = __grants.get(reqId);
+  if (!entry) return false;
   __grants.delete(reqId);
-  return exp >= GetGameTimer();
+  if (entry.action !== action) return false;
+  return entry.exp >= GetGameTimer();
 };
 
-onNet('cq-admin:cl:grant', (reqId, _action, _otp) => {
-  if (typeof reqId === 'string' && reqId.length > 0) {
-    __grantAdd(reqId, 15000);
+onNet('cq-admin:cl:grant', (reqId, action, _otp) => {
+  if (typeof reqId === 'string' && reqId.length > 0 && typeof action === 'string' && action.length > 0) {
+    __grantAdd(reqId, action, 15000);
   }
 });
 
 onNet('cq-admin:cl:spawnObject', (reqId, model) => {
-  if (!__grantConsume(reqId)) return;
+  if (!__grantConsume(reqId, 'spawnObject')) return;
   if (typeof model === 'string' && model.length > 0) startGizmoForModel(model);
 });
 
 onNet('cq-admin:cl:spawnVehicleGizmo', (reqId, model) => {
-  if (!__grantConsume(reqId)) return;
+  if (!__grantConsume(reqId, 'spawnVehicleGizmo')) return;
   if (typeof model === 'string' && model.length > 0) startVehicleGizmoForModel(model);
 });
 
 onNet('cq-admin:cl:spawnObjectAt', async (reqId, model, x, y, z, heading) => {
-  if (!__grantConsume(reqId)) return;
+  if (!__grantConsume(reqId, 'spawnObjectAt')) return;
   const hash = await loadModel(model);
   if (!hash) return;
   const obj = CreateObjectNoOffset(hash, x || 0.0, y || 0.0, z || 0.0, true, true, false);
@@ -455,7 +456,7 @@ onNet('cq-admin:cl:spawnObjectAt', async (reqId, model, x, y, z, heading) => {
 });
 
 onNet('cq-admin:cl:spawnVehicleAt', async (reqId, model, x, y, z, heading) => {
-  if (!__grantConsume(reqId)) return;
+  if (!__grantConsume(reqId, 'spawnVehicleAt')) return;
   const hash = await loadModel(model);
   if (!hash) return;
   const veh = CreateVehicle(hash, x || 0.0, y || 0.0, z || 0.0, heading || 0.0, true, false);

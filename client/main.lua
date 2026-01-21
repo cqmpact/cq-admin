@@ -37,24 +37,31 @@ local IB = {
 local _grants = {}
 local _grantedUse = {}
 
-local function _grantAdd(reqId, ttlMs)
+local function _grantAdd(reqId, action, ttlMs)
     if type(reqId) ~= 'string' or reqId == '' then return end
-    _grants[reqId] = (GetGameTimer() + (ttlMs or 15000))
+    if type(action) ~= 'string' or action == '' then return end
+    _grants[reqId] = {
+        exp = GetGameTimer() + (ttlMs or 15000),
+        action = action,
+    }
 end
 
-local function _grantConsume(reqId)
+local function _grantConsume(reqId, action)
     if type(reqId) ~= 'string' then return false end
-    local exp = _grants[reqId]
-    if not exp then return false end
+    if type(action) ~= 'string' or action == '' then return false end
+    local entry = _grants[reqId]
+    if not entry then return false end
     _grants[reqId] = nil
-    if exp < GetGameTimer() then return false end
+    if entry.exp < GetGameTimer() then return false end
+    if entry.action ~= action then return false end
     return true
 end
 
-local function _validateGrant(reqId)
-    if not _grantConsume(reqId) then return false end
+local function _validateGrant(reqId, action)
+    if type(action) ~= 'string' or action == '' then return false end
+    if not _grantConsume(reqId, action) then return false end
     _grantedUse[reqId] = nil
-    TriggerServerEvent('cq-admin:sv:use', reqId)
+    TriggerServerEvent('cq-admin:sv:use', reqId, action)
     local start = GetGameTimer()
     while _grantedUse[reqId] == nil and (GetGameTimer() - start) < 2000 do
         Wait(0)
@@ -63,7 +70,15 @@ local function _validateGrant(reqId)
     _grantedUse[reqId] = nil
     return ok
 end
-_G._validateGrant = _validateGrant
+CQAdmin = CQAdmin or {}
+CQAdmin._internal = CQAdmin._internal or {}
+CQAdmin._internal.validateGrant = _validateGrant
+CreateThread(function()
+    Wait(1000)
+    if CQAdmin and CQAdmin._internal then
+        CQAdmin._internal.validateGrant = nil
+    end
+end)
 
 local function _moduleEnabled(name)
     local cfg = rawget(_G, 'CQAdmin_Config')
@@ -160,9 +175,10 @@ RegisterNetEvent('cq-admin:cl:notify', function(msg)
     end
 end)
 
-RegisterNetEvent('cq-admin:cl:grant', function(reqId, _action, otp)
+RegisterNetEvent('cq-admin:cl:grant', function(reqId, action, otp)
     if type(reqId) ~= 'string' or reqId == '' or type(otp) ~= 'string' or otp == '' then return end
-    _grantAdd(reqId, 15000)
+    if type(action) ~= 'string' or action == '' then return end
+    _grantAdd(reqId, action, 15000)
     TriggerServerEvent('cq-admin:sv:ack', reqId, otp)
 end)
 
@@ -173,47 +189,7 @@ end)
 RegisterNetEvent('cq-admin:cl:setCapabilities', function(caps)
     capabilities = caps or {}
     if isOpen then
-        local data = (function()
-            local effects = {}
-            local function add(name)
-                local mod = CQAdminCategories[name]
-                if mod and type(mod.build) == 'function' then
-                    local ok, res = pcall(mod.build)
-                    if ok and type(res) == 'table' then
-                        effects[#effects+1] = res
-                    end
-                end
-            end
-
-            if capabilities.player and _moduleEnabled('player') then add('player') end
-            if capabilities.weapons and _moduleEnabled('weapons') then add('weapons') end
-            if capabilities.vehicles and _moduleEnabled('vehicles') then add('vehicles') end
-            if capabilities.appearance and _moduleEnabled('appearance') then add('appearance') end
-            if capabilities.time_weather and _moduleEnabled('time_weather') then add('time_weather') end
-            if capabilities.misc and _moduleEnabled('misc') then add('misc') end
-            if capabilities.world and _moduleEnabled('world') then add('world') end
-            if capabilities.debug and _moduleEnabled('debug') then add('debug') end
-
-            local data = {
-                title = "Admin Menu",
-                effects = effects,
-                globalGroups = {},
-                callbacks = {
-                    close = "cq-admin:cb:closeMenu",
-                    reload = "cq-admin:cb:reload"
-                }
-            }
-            return data
-        end)()
-
-        data.quiet = _quietMode()
-
-        if #data.effects == 0 then
-            SendNUIMessage({ action = "cq:menu:open", data = data })
-            notify('error', 'You do not have access to any admin sections')
-        else
-            SendNUIMessage({ action = "cq:menu:open", data = data })
-        end
+        CQAdmin_RequestMenuRefresh(true)
     end
 end)
 
@@ -239,11 +215,14 @@ end, false)
 
 RegisterKeyMapping('noclip', '(Admin) Noclip', 'keyboard', 'F2')
 
-RegisterNetEvent('cq-admin:cl:open', function()
+RegisterNetEvent('cq-admin:cl:open', function(reqId)
+    if not _validateGrant(reqId, 'openMenu') then return end
     if isOpen then return end
     isOpen = true
     freeControl = false
     SetNuiFocus(true, true)
+    SendNUIMessage({ action = 'cq:menu:setFreeControl', enabled = false })
+    TriggerServerEvent('cq-admin:sv:menuOpened')
     TriggerServerEvent('cq-admin:sv:requestCapabilities')
 end)
 
@@ -253,17 +232,21 @@ RegisterNetEvent('cq-admin:cl:close', function()
     freeControl = false
     SetNuiFocus(false, false)
     SendNUIMessage({ action = 'cq:menu:close' })
+    TriggerServerEvent('cq-admin:sv:menuClosed')
 end)
 
 RegisterNUICallback('cq-admin:cb:closeMenu', function(_, cb)
     isOpen = false
     freeControl = false
     SetNuiFocus(false, false)
+    SendNUIMessage({ action = 'cq:menu:close' })
+    TriggerServerEvent('cq-admin:sv:menuClosed')
     cb({})
 end)
 
 RegisterNUICallback('cq-admin:cb:reload', function(_, cb)
     if isOpen then
+        CQAdmin_RequestMenuRefresh()
         TriggerServerEvent('cq-admin:sv:requestCapabilities')
     end
     cb({ ok = true })
@@ -291,6 +274,68 @@ AddEventHandler('onResourceStop', function(res)
         freeControl = false
         SetNuiFocus(false, false)
         SendNUIMessage({ action = 'cq:menu:close' })
+        TriggerServerEvent('cq-admin:sv:menuClosed')
     end
     HideInstructionalButtons()
 end)
+
+function CQAdmin_RequestMenuRefresh(force)
+    if not isOpen and not force then return end
+    if not capabilities then return end
+    local effects = {}
+    local values = {}
+
+    local function merge(dst, src)
+        if type(src) ~= 'table' then return end
+        for k, v in pairs(src) do
+            dst[k] = v
+        end
+    end
+
+    local function add(name)
+        local mod = CQAdminCategories[name]
+        if mod and type(mod.build) == 'function' then
+            local ok, res = pcall(mod.build)
+            if ok and type(res) == 'table' then
+                effects[#effects+1] = res
+                if type(mod.values) == 'function' then
+                    local okv, v = pcall(mod.values)
+                    if okv and type(v) == 'table' then
+                        merge(values, v)
+                    end
+                end
+            end
+        end
+    end
+
+    if capabilities.player and _moduleEnabled('player') then add('player') end
+    if capabilities.weapons and _moduleEnabled('weapons') then add('weapons') end
+    if capabilities.vehicles and _moduleEnabled('vehicles') then add('vehicles') end
+    if capabilities.appearance and _moduleEnabled('appearance') then add('appearance') end
+    if capabilities.time_weather and _moduleEnabled('time_weather') then add('time_weather') end
+    if capabilities.misc and _moduleEnabled('misc') then add('misc') end
+    if capabilities.world and _moduleEnabled('world') then add('world') end
+    if capabilities.debug and _moduleEnabled('debug') then add('debug') end
+
+    local data = {
+        title = "Admin Menu",
+        effects = effects,
+        globalGroups = {},
+        callbacks = {
+            close = "cq-admin:cb:closeMenu",
+            reload = "cq-admin:cb:reload"
+        },
+        values = values
+    }
+    data.quiet = _quietMode()
+
+    local action = (isOpen and not force) and "cq:menu:setData" or "cq:menu:open"
+    SendNUIMessage({ action = action, data = data })
+    if #effects == 0 then
+        notify('error', 'You do not have access to any admin sections')
+    end
+end
+
+function CQAdmin_IsMenuOpen()
+    return isOpen and true or false
+end

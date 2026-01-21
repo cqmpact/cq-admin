@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify compiled ImGui assets
+        run: |
+          test -f html/imgui.js
+          test -f html/imgui.wasm
+
+      - name: Build release zip
+        run: |
+          VERSION="${GITHUB_REF_NAME:-dev}"
+          ZIP_NAME="cq-admin-${VERSION}.zip"
+          mkdir -p dist/cq-admin
+          rsync -a --delete ./ dist/cq-admin/ \
+            --exclude "imgui/" \
+            --exclude "imgui_app.cpp" \
+            --exclude "scripts/" \
+            --exclude ".github/" \
+            --exclude ".vscode/" \
+            --exclude ".idea/" \
+            --exclude "node_modules/" \
+            --exclude "package-lock.json" \
+            --exclude "yarn.lock" \
+            --exclude ".yarn.installed"
+          (cd dist && zip -r "../$ZIP_NAME" "cq-admin")
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cq-admin
+          path: ${{ env.ZIP_NAME }}
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP_NAME }}
+          generate_release_notes: true

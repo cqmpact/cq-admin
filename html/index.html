@@ -21,76 +21,9 @@ Contributors
 </head>
 
 <body>
-<div id="root" class="hidden">
-  <div id="window" class="ui-window" role="application" aria-label="Menu">
-    <!-- Title row -->
-    <div class="ui-titlebar">
-      <div class="ui-title" id="menuTitle">Menu</div>
-      <div class="ui-titlebar-actions">
-        <button class="ui-iconbtn" id="btnPin" type="button" title="Pin">
-          📌
-        </button>
-        <button class="ui-iconbtn" id="btnMouse" type="button" title="Free mouse/control">
-          🖱
-        </button>
-      </div>
-    </div>
-
-    <!-- Main content -->
-    <div class="ui-body">
-      <!-- Left: list -->
-      <aside class="ui-sidebar">
-        <div class="ui-searchrow">
-          <div class="ui-search">
-            <span class="ui-search-icon">🔎</span>
-            <input
-              id="searchInput"
-              class="ui-input"
-              type="text"
-              placeholder="Search"
-              autocomplete="off"
-            />
-          </div>
-        </div>
-
-        <div class="ui-sidebar-actions">
-          <button class="ui-btn" id="btnCollapseAll" type="button">
-            Collapse all
-          </button>
-        </div>
-
-        <div class="ui-list" id="effectList" role="list"></div>
-      </aside>
-
-      <!-- Right: details -->
-      <main class="ui-detail">
-        <div id="emptyState" class="ui-emptystate hidden" role="status" aria-live="polite">
-          No data is passed.
-        </div>
-        <div class="ui-panel-title">
-          <span id="detailTitle">Details</span>
-          <div class="ui-panel-title-actions"></div>
-        </div>
-
-        <div class="ui-detail-scroll" id="detailPanel"></div>
-      </main>
-    </div>
-
-    <!-- Footer -->
-    <div class="ui-footer">
-      <button class="ui-btn ui-btn-wide" id="btnReload" type="button">
-        ↻ Reload
-      </button>
-      <div class="ui-hint" id="hintText">Esc to close</div>
-    </div>
-  </div>
-
-
-</div>
-
-<!-- Notifications -->
-<div id="notifyRoot" class="notify-root" aria-live="polite" aria-atomic="false"></div>
-
-<script src="app.js"></script>
+  <canvas id="imguiCanvas" class="hidden" tabindex="1"></canvas>
+  <div id="notifyRoot" class="notify-root" aria-live="polite" aria-atomic="false"></div>
+  <script src="imgui.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

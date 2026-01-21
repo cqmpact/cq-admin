@@ -204,3 +204,4 @@ RegisterNetEvent('cq-admin:sv:setSecondaryColor', function(color)
     local norm = _parseRGBString(color, 0, 0, 255)
     issueGrant(src, 'setSecondaryColor', 'cq-admin:cl:setSecondaryColor', norm)
 end)
+

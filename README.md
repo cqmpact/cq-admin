@@ -1,19 +1,39 @@
 # cq-admin
-### Dear ImgUi inspired admin menu for FiveM
+### Dear ImGui inspired admin menu for FiveM
 ![License](https://img.shields.io/badge/License-MPL_2.0-blue.svg)
 
 ![QB-Core](https://img.shields.io/badge/QB--Core-No_Default_Support-red.svg)
 ![ESX](https://img.shields.io/badge/ESX-No_Default_Support-red.svg)
 
+#### Table of contents
+- Features
+- Requirements & compatibility
+- Installation
+- Building ImGui (WASM)
+- Usage
+- Commands & keybinds
+- Configuration: enable/disable built-in modules
+- UI controls at a glance
+- Production options and tunables
+- Security notes
+- Example server.cfg block
+- Resource structure
+- Loading your custom folder
+- Client utilities (CQ.Util and CQ.Controls)
+- Adding your own commands (custom modules)
+- Quick ACE permissions guide
+
 #### Features
-- Player: heal, armor, revive, teleport to waypoint, noclip, god mode, invisibility, utility toggles
-- Vehicles: spawn, fix/clean, delete/flip/warp, engine toggle, max performance, doors/windows, neon/colors, plate, visibility
-- Weapons: give/remove/refill ammo, unlimited ammo/no reload, parachute options
-- World: spawn/delete nearby objects
-- Time & Weather: set/freeze time, set weather
-- Misc: speedometer, coords, HUD/radar toggle, location/time text, night/thermal vision, camera locks, clear area
-- Appearance: spawn/reset ped, presets
-- Debug: developer tools (tied to `admin.debug`)
+| Area | Highlights |
+| --- | --- |
+| Player | Heal, armor, revive, teleport to waypoint, noclip, god mode, invisibility, utility toggles |
+| Vehicles | Spawn, fix/clean, delete/flip/warp, engine toggle, max performance, doors/windows, neon/colors, plate, visibility |
+| Weapons | Give/remove/refill ammo, unlimited ammo/no reload, parachute options |
+| World | Spawn/delete nearby objects |
+| Time & Weather | Set/freeze time, set weather |
+| Misc | Speedometer, coords, HUD/radar toggle, location/time text, night/thermal vision, camera locks, clear area |
+| Appearance | Spawn/reset ped, presets |
+| Debug | Developer tools (tied to `admin.debug`) |
 
 Note: exact items available depend on your configured ACE permissions (inside server.cfg or an external permissions .cfg file).
 
@@ -40,6 +60,30 @@ ensure cq-admin
 3) Configure ACE permissions (see Quick ACE guide below). Without any admin permissions, the menu will not open.
 
 4) Start or restart your server/resource.
+
+---
+
+### Building ImGui (WASM)
+The NUI is rendered via a compiled Dear ImGui bundle. The `imgui/` folder is used only for local builds and is not included in production at runtime.
+
+To rebuild the WASM bundle after editing `imgui_app.cpp` or updating ImGui:
+```
+powershell -ExecutionPolicy Bypass -File scripts/build_imgui.ps1
+```
+This outputs `html/imgui.js` and `html/imgui.wasm` which are loaded by the NUI.
+
+Production note:
+- You may delete the `imgui/` folder after building. The runtime only needs the compiled `html/imgui.js` and `html/imgui.wasm`.
+- If you want to rebuild later, restore the `imgui/` folder (Dear ImGui source) and run the build script again.
+
+---
+
+### CI/CD release pipeline
+The repo includes a GitHub Actions release workflow that packages a clean resource zip.
+
+- Trigger: push a tag like `v2.0.0` or run the workflow manually.
+- Output: a zip containing only runtime files (excludes `imgui/`, scripts, node_modules, and GitHub metadata).
+- Requirement: compiled `html/imgui.js` and `html/imgui.wasm` must already exist in the repo.
 
 ---
 
@@ -107,14 +151,27 @@ ConVars (server.cfg):
 
 - `set cqadmin_versioncheck 1` — enable remote version check at resource start (default: 0/off). When off, no external request is made.
 - `set cqadmin_debug 1` — enable verbose debug logs (default: 0/off). When on, additional diagnostic messages are printed server-side.
+- `set cqadmin_discord_webhook "https://discord.com/api/webhooks/..."` — optional Discord webhook for batched audit logs (default: empty/off).
+- `set cqadmin_log_interval_ms 30000` — log batch flush interval in ms (default: 30000).
 - Throttle/cooldown windows (milliseconds), optional — override defaults if you need to tune noise/spam resistance:
   - `set cqadmin_cap_req_window_ms 2000` — per-player throttle for capability requests (default: 2000)
   - `set cqadmin_deny_cooldown_ms 2000` — per-player cooldown between permission-denied toasts (default: 2000)
   - `set cqadmin_open_menu_window_ms 1000` — per-player throttle for opening the admin menu (default: 1000)
+  - `set cqadmin_cap_open_window_ms 300000` — how long capabilities may be requested after menu open (default: 300000)
   - `set cqadmin_world_cooldown_ms 2000` — per-player cooldown for heavy world actions like deleteNearby (default: 2000)
   - `set cqadmin_misc_cooldown_ms 2000` — per-player cooldown for misc heavy actions like clearArea (default: 2000)
   - `set cqadmin_timewx_cooldown_ms 1000` — per-player cooldown for time/weather changes (default: 1000)
   - `set cqadmin_grant_handshake_window_ms 50` — per-player minimum spacing (ms) between grant handshake events (`sv:ack`/`sv:use`) to dampen abuse (default: 50)
+  - Per-action cooldowns for sensitive actions (optional):
+    - `set cqadmin_cd_spawn_object_ms 1000`
+    - `set cqadmin_cd_spawn_object_at_ms 1000`
+    - `set cqadmin_cd_delete_nearby_ms 2000`
+    - `set cqadmin_cd_spawn_vehicle_ms 2000`
+    - `set cqadmin_cd_spawn_vehicle_gizmo_ms 2000`
+    - `set cqadmin_cd_spawn_vehicle_at_ms 2000`
+    - `set cqadmin_cd_spawn_weapon_ms 500`
+    - `set cqadmin_cd_give_weapon_ms 500`
+    - `set cqadmin_cd_remove_weapons_ms 2000`
   - Grant guardrails:
     - `set cqadmin_max_grants_per_src 32` — max outstanding grants allowed per player (default: 32)
     - `set cqadmin_max_grants_total 1024` — global cap for outstanding grants across all players (default: 1024)
@@ -126,10 +183,11 @@ Shared config (both client/server): `shared/config.lua`
 
 Built-in rate limits and cooldowns:
 
-- Capabilities throttle: the server rate-limits `cq-admin:sv:requestCapabilities` per player (default 2s window, convar `cqadmin_cap_req_window_ms`).
+- Capabilities throttle: the server rate-limits `cq-admin:sv:requestCapabilities` per player (default 2s window, convar `cqadmin_cap_req_window_ms`). Capabilities are only served while the menu is open (menu open window controlled by `cqadmin_cap_open_window_ms`).
 - Deny notification cooldown: repeated permission denials to the same player are only notified once per cooldown window (default 2s, convar `cqadmin_deny_cooldown_ms`).
 - Menu open throttle: `cq-admin:sv:openMenuRequest` is throttled per player (default 1s, convar `cqadmin_open_menu_window_ms`).
 - Heavy actions: `clearArea` and `deleteNearby` have per-player cooldowns (default 2s; convars `cqadmin_misc_cooldown_ms`, `cqadmin_world_cooldown_ms`).
+- Per-action cooldowns: spawn/delete/weapon actions can be rate-limited independently using the `cqadmin_cd_*` convars listed above.
 - Grant guardrails: per-player and global outstanding grant caps prevent unbounded growth (convars `cqadmin_max_grants_per_src`, `cqadmin_max_grants_total`).
 
 Input validation (server-side):
@@ -139,6 +197,58 @@ Input validation (server-side):
 - Numeric clamps: ammo (0..9999), armor (0..100), wanted level (0..5), deleteNearby radius (1..200).
 
 Tip: If you want all informational toasts for debugging, set `quietNotifications = false` in `shared/config.lua` and enable `cqadmin_debug` temporarily in `server.cfg`.
+
+Audit logging:
+- When `cqadmin_discord_webhook` is set, every admin action and grant handshake event is logged with severity (`info`, `warn`, `error`) and sent in 30s batches to avoid rate limits.
+- Log payloads are summarized and truncated to keep messages readable.
+
+---
+
+### Security notes
+- All client actions are server‑authorized via a short‑lived grant handshake; client handlers must call `_validateGrant(reqId, action)`.
+- Capabilities are only delivered while the menu is open to reduce information leakage.
+- Event names are public by nature in FiveM; protection relies on ACE checks and server‑side validation.
+
+---
+
+### Example server.cfg block
+```
+# Core
+ensure cq-admin
+set cqadmin_versioncheck 1
+set cqadmin_debug 0
+
+# Audit logging
+set cqadmin_discord_webhook "https://discord.com/api/webhooks/..."
+set cqadmin_log_interval_ms 30000
+
+# General throttles
+set cqadmin_cap_req_window_ms 2000
+set cqadmin_cap_open_window_ms 300000
+set cqadmin_deny_cooldown_ms 2000
+set cqadmin_open_menu_window_ms 1000
+set cqadmin_grant_handshake_window_ms 50
+
+# Heavy action cooldowns
+set cqadmin_world_cooldown_ms 2000
+set cqadmin_misc_cooldown_ms 2000
+set cqadmin_timewx_cooldown_ms 1000
+
+# Per-action cooldowns
+set cqadmin_cd_spawn_object_ms 1000
+set cqadmin_cd_spawn_object_at_ms 1000
+set cqadmin_cd_delete_nearby_ms 2000
+set cqadmin_cd_spawn_vehicle_ms 2000
+set cqadmin_cd_spawn_vehicle_gizmo_ms 2000
+set cqadmin_cd_spawn_vehicle_at_ms 2000
+set cqadmin_cd_spawn_weapon_ms 500
+set cqadmin_cd_give_weapon_ms 500
+set cqadmin_cd_remove_weapons_ms 2000
+
+# Grant guardrails
+set cqadmin_max_grants_per_src 32
+set cqadmin_max_grants_total 1024
+```
 
 ---
 
@@ -157,6 +267,7 @@ cq-admin/
     custom/               # your custom client modules (empty, ignored by git)
   server/
     main.lua              # ACE groups map, grants, capability service, /admin
+    _ctx.lua              # shared server helpers for default/custom modules
     default/*.lua         # built-in server handlers per category
     custom/               # your custom server modules (empty, ignored by git)
   .github/                # PR/issue templates and CI checks
@@ -184,6 +295,7 @@ client_scripts {
 
 server_scripts {
   'server/main.lua',
+  'server/_ctx.lua',
   'server/default/*.lua',
   'server/custom/*.lua'      -- add this
 }
@@ -290,7 +402,7 @@ end)
 
 -- Secured client-side actions (server -> client, gated by a short-lived grant)
 RegisterNetEvent('cq-admin:cl:doSomething', function(reqId)
-  if not _validateGrant(reqId) then return end  -- mandatory security check
+  if not _validateGrant(reqId, 'doSomething') then return end  -- mandatory security check
   -- Perform the action on the client here
 end)
 ```
@@ -298,6 +410,7 @@ end)
 Step 2 — Server: permissions, handlers, and grants
 Create `server/custom/my_feature.lua`:
 ```
+-- Note: server/_ctx.lua exposes hasGroup/deny/issueGrant/notify/GROUPS to this file.
 -- Map your actions to ACE strings (reuse existing ones or define your own)
 -- You can extend the global GROUPS from any server file:
 GROUPS.doSomething = 'admin.misc'         -- or 'admin.myfeature'
@@ -331,13 +444,13 @@ end)
 
 Why the grant round‑trip?
 - The server issues a short‑lived one‑time token via `issueGrant(...)`.
-- The client receives it, calls back with `cq-admin:sv:use`, and only then the action becomes valid in the client with `_validateGrant(reqId)`.
+- The client receives it, calls back with `cq-admin:sv:use`, and only then the action becomes valid in the client with `_validateGrant(reqId, action)`.
 - This prevents spoofing client events and ensures the server authorizes each action.
 
 Naming conventions used by built‑ins:
 - NUI callbacks: `cq-admin:cb:<name>` (client side, UI → server trigger)
 - Server events: `cq-admin:sv:<name>` (server handlers with ACE check)
-- Client events: `cq-admin:cl:<name>` (client effect, must call `_validateGrant` first)
+- Client events: `cq-admin:cl:<name>` (client effect, must call `_validateGrant(reqId, action)` first)
 
 Step 3 — ACE permissions for your actions
 - Reuse an existing ACE like `admin.misc`, or create your own e.g. `admin.myfeature` and grant it in `server.cfg`.
@@ -450,3 +563,6 @@ This project is licensed under the **Mozilla Public License 2.0 (MPL-2.0)**.
 - New, separate files you create may be licensed however you choose, as long as you comply with MPL-2.0 for any MPL-licensed files you change.
 
 SPDX identifier: `MPL-2.0`
+
+### Third-party licenses
+- Dear ImGui (MIT): `IMGUI_LICENSE.txt`

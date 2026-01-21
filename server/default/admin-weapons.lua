@@ -85,3 +85,4 @@ RegisterNetEvent('cq-admin:sv:autoParachute', function(enabled)
     if not hasGroup(src, group) then return deny(src, 'autoParachute', group) end
     issueGrant(src, 'autoParachute', 'cq-admin:cl:autoParachute', enabled and true or false)
 end)
+

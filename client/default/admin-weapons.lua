@@ -10,8 +10,8 @@ Contributors
 ]]
 
 -- luacheck: max_line_length 300
--- luacheck: globals _validateGrant
-
+-- luacheck: globals CQAdmin
+local ValidateGrant = (CQAdmin and CQAdmin._internal and CQAdmin._internal.validateGrant) or function() return false end
 RegisterAdminCategory('weapons', {
     build = function()
         return {
@@ -66,7 +66,7 @@ RegisterNUICallback('cq-admin:cb:getAllWeapons', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:getAllWeapons', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'getAllWeapons') then return end
     local ped = pedId()
 
     local weapons = {
@@ -113,7 +113,7 @@ RegisterNUICallback('cq-admin:cb:removeAllWeapons', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:removeAllWeapons', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'removeAllWeapons') then return end
     RemoveAllPedWeapons(pedId(), true)
     if notify then notify('success', 'All weapons removed') end
 end)
@@ -125,7 +125,7 @@ RegisterNUICallback('cq-admin:cb:spawnWeaponByName', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:spawnWeaponByName', function(reqId, weapon)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'spawnWeaponByName') then return end
     local ped = pedId()
     if not weapon or weapon == '' then return (notify and notify('error', 'Invalid weapon name')) end
 
@@ -145,7 +145,7 @@ RegisterNUICallback('cq-admin:cb:refillAmmo', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:refillAmmo', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'refillAmmo') then return end
     local ped = pedId()
 
     for i = 0, 50 do
@@ -165,7 +165,7 @@ RegisterNUICallback('cq-admin:cb:setAmmo', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:setAmmo', function(reqId, amount)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'setAmmo') then return end
     local ped = PlayerPedId()
     local ammoCount = tonumber(amount) or 250
 
@@ -189,7 +189,7 @@ RegisterNUICallback('cq-admin:cb:unlimitedAmmo', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:unlimitedAmmo', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'unlimitedAmmo') then return end
     _unlimitedAmmo = enabled and true or false
     if notify then notify('info', ('Unlimited Ammo: %s'):format(_unlimitedAmmo and 'ON' or 'OFF')) end
 end)
@@ -210,7 +210,7 @@ RegisterNUICallback('cq-admin:cb:noReload', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:noReload', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'noReload') then return end
     _noReload = enabled and true or false
     if notify then notify('info', ('No Reload: %s'):format(_noReload and 'ON' or 'OFF')) end
 end)
@@ -235,7 +235,7 @@ RegisterNUICallback('cq-admin:cb:giveParachute', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:giveParachute', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'giveParachute') then return end
     GiveWeaponToPed(pedId(), GetHashKey('GADGET_PARACHUTE'), 1, false, false)
     if notify then notify('success', 'Parachute given') end
 end)
@@ -249,7 +249,7 @@ RegisterNUICallback('cq-admin:cb:autoParachute', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:autoParachute', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'autoParachute') then return end
     _autoParachute = enabled and true or false
     if notify then notify('info', ('Auto Parachute: %s'):format(_autoParachute and 'ON' or 'OFF')) end
 end)
@@ -271,3 +271,5 @@ CreateThread(function()
         end
     end
 end)
+
+

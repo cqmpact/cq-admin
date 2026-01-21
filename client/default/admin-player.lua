@@ -10,8 +10,8 @@ Contributors
 ]]
 
 -- luacheck: max_line_length 200
--- luacheck: globals _validateGrant
-
+-- luacheck: globals CQAdmin
+local ValidateGrant = (CQAdmin and CQAdmin._internal and CQAdmin._internal.validateGrant) or function() return false end
 RegisterAdminCategory('player', {
     build = function()
         return {
@@ -85,7 +85,7 @@ local GetCamDir = (CQ and CQ.Util and CQ.Util.getCamDir) or function()
 end
 
 RegisterNetEvent('cq-admin:cl:healSelf', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'healSelf') then return end
     local ped = PlayerPedId()
     SetEntityHealth(ped, 200)
     SetPedArmour(ped, 100)
@@ -95,7 +95,7 @@ RegisterNetEvent('cq-admin:cl:healSelf', function(reqId)
 end)
 
 RegisterNetEvent('cq-admin:cl:giveArmor', function(reqId, amount)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'giveArmor') then return end
     local ped = PlayerPedId()
     local clamp = (CQ and CQ.Util and CQ.Util.clamp) or function(v,min,max)
         v = tonumber(v) or 0; if v < min then return min elseif v > max then return max else return v end
@@ -105,7 +105,7 @@ RegisterNetEvent('cq-admin:cl:giveArmor', function(reqId, amount)
 end)
 
 RegisterNetEvent('cq-admin:cl:revive', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'revive') then return end
     local ped = PlayerPedId()
     local coords = GetEntityCoords(ped)
     NetworkResurrectLocalPlayer(coords.x, coords.y, coords.z, GetEntityHeading(ped), true, true)
@@ -117,7 +117,7 @@ RegisterNetEvent('cq-admin:cl:revive', function(reqId)
 end)
 
 RegisterNetEvent('cq-admin:cl:giveWeapon', function(reqId, weapon, ammo)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'giveWeapon') then return end
     local ped = PlayerPedId()
     if not weapon or weapon == '' then return (notify and notify('error', 'Invalid weapon')) end
     local hash = GetHashKey(weapon)
@@ -126,7 +126,7 @@ RegisterNetEvent('cq-admin:cl:giveWeapon', function(reqId, weapon, ammo)
 end)
 
 RegisterNetEvent('cq-admin:cl:teleportToWaypoint', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'teleportToWaypoint') then return end
     local blip = GetFirstBlipInfoId(8)
     if blip == 0 then return (notify and notify('error', 'No waypoint set')) end
     local coords = GetBlipInfoIdCoord(blip)
@@ -172,7 +172,7 @@ local DISABLE = (CQ and CQ.NoclipDisableControls) or {
 }
 
 RegisterNetEvent('cq-admin:cl:noclip', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'noclip') then return end
     _noclipEnabled = enabled and true or false
     local ped = PlayerPedId()
     SetEntityInvincible(ped, _noclipEnabled)
@@ -340,7 +340,7 @@ RegisterNUICallback('cq-admin:cb:godMode', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:godMode', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'godMode') then return end
     _godModeEnabled = enabled and true or false
     local ped = PlayerPedId()
     SetEntityInvincible(ped, _godModeEnabled)
@@ -354,7 +354,7 @@ RegisterNUICallback('cq-admin:cb:invisible', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:invisible', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'invisible') then return end
     _invisibleEnabled = enabled and true or false
     local ped = PlayerPedId()
     SetEntityVisible(ped, not _invisibleEnabled, false)
@@ -368,7 +368,7 @@ RegisterNUICallback('cq-admin:cb:unlimitedStamina', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:unlimitedStamina', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'unlimitedStamina') then return end
     _unlimitedStamina = enabled and true or false
     if notify then notify('info', ('Unlimited Stamina: %s'):format(_unlimitedStamina and 'ON' or 'OFF')) end
 end)
@@ -389,7 +389,7 @@ RegisterNUICallback('cq-admin:cb:fastRun', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:fastRun', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'fastRun') then return end
     _fastRun = enabled and true or false
     SetRunSprintMultiplierForPlayer(PlayerId(), _fastRun and 1.49 or 1.0)
     if notify then notify('info', ('Fast Run: %s'):format(_fastRun and 'ON' or 'OFF')) end
@@ -402,7 +402,7 @@ RegisterNUICallback('cq-admin:cb:fastSwim', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:fastSwim', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'fastSwim') then return end
     _fastSwim = enabled and true or false
     SetSwimMultiplierForPlayer(PlayerId(), _fastSwim and 1.49 or 1.0)
     if notify then notify('info', ('Fast Swim: %s'):format(_fastSwim and 'ON' or 'OFF')) end
@@ -415,7 +415,7 @@ RegisterNUICallback('cq-admin:cb:superJump', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:superJump', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'superJump') then return end
     _superJump = enabled and true or false
     if notify then notify('info', ('Super Jump: %s'):format(_superJump and 'ON' or 'OFF')) end
 end)
@@ -436,7 +436,7 @@ RegisterNUICallback('cq-admin:cb:noRagdoll', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:noRagdoll', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'noRagdoll') then return end
     _noRagdoll = enabled and true or false
     if notify then notify('info', ('No Ragdoll: %s'):format(_noRagdoll and 'ON' or 'OFF')) end
 end)
@@ -457,7 +457,7 @@ RegisterNUICallback('cq-admin:cb:neverWanted', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:neverWanted', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'neverWanted') then return end
     _neverWanted = enabled and true or false
     if notify then notify('info', ('Never Wanted: %s'):format(_neverWanted and 'ON' or 'OFF')) end
 end)
@@ -479,7 +479,7 @@ RegisterNUICallback('cq-admin:cb:everyoneIgnore', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:everyoneIgnore', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'everyoneIgnore') then return end
     _everyoneIgnore = enabled and true or false
     SetEveryoneIgnorePlayer(PlayerId(), _everyoneIgnore)
     SetPoliceIgnorePlayer(PlayerId(), _everyoneIgnore)
@@ -493,7 +493,7 @@ RegisterNUICallback('cq-admin:cb:stayInVehicle', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:stayInVehicle', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'stayInVehicle') then return end
     _stayInVehicle = enabled and true or false
     if notify then notify('info', ('Stay In Vehicle: %s'):format(_stayInVehicle and 'ON' or 'OFF')) end
 end)
@@ -517,7 +517,7 @@ RegisterNUICallback('cq-admin:cb:freezePlayer', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:freezePlayer', function(reqId, enabled)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'freezePlayer') then return end
     _freezePlayer = enabled and true or false
     FreezeEntityPosition(PlayerPedId(), _freezePlayer)
     if notify then notify('info', ('Freeze Player: %s'):format(_freezePlayer and 'ON' or 'OFF')) end
@@ -530,7 +530,7 @@ RegisterNUICallback('cq-admin:cb:setWantedLevel', function(data, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:setWantedLevel', function(reqId, level)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'setWantedLevel') then return end
     local wantedLevel = math.max(0, math.min(tonumber(level) or 0, 5))
     SetPlayerWantedLevel(PlayerId(), wantedLevel, false)
     SetPlayerWantedLevelNow(PlayerId(), false)
@@ -543,7 +543,7 @@ RegisterNUICallback('cq-admin:cb:cleanPlayer', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:cleanPlayer', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'cleanPlayer') then return end
     local ped = PlayerPedId()
     ClearPedBloodDamage(ped)
     ClearPedWetness(ped)
@@ -558,7 +558,7 @@ RegisterNUICallback('cq-admin:cb:dryPlayer', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:dryPlayer', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'dryPlayer') then return end
     ClearPedWetness(PlayerPedId())
     if notify then notify('success', 'Player dried') end
 end)
@@ -569,7 +569,7 @@ RegisterNUICallback('cq-admin:cb:wetPlayer', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:wetPlayer', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'wetPlayer') then return end
     SetPedWetnessHeight(PlayerPedId(), 2.0)
     if notify then notify('success', 'Player wetted') end
 end)
@@ -580,7 +580,7 @@ RegisterNUICallback('cq-admin:cb:clearBlood', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:clearBlood', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'clearBlood') then return end
     ClearPedBloodDamage(PlayerPedId())
     if notify then notify('success', 'Blood cleared') end
 end)
@@ -591,7 +591,9 @@ RegisterNUICallback('cq-admin:cb:suicide', function(_, cb)
 end)
 
 RegisterNetEvent('cq-admin:cl:suicide', function(reqId)
-    if not _validateGrant(reqId) then return end
+    if not ValidateGrant(reqId, 'suicide') then return end
     SetEntityHealth(PlayerPedId(), 0)
     if notify then notify('info', 'Suicide executed') end
 end)
+
+

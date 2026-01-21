@@ -15,14 +15,17 @@ game 'gta5'
 
 author 'cqmpact <https://github.com/cqmpact>'
 description 'Dear ImgUi inspired admin menu'
-version '1.0.0'
+version '2.0.0'
 
 ui_page 'html/index.html'
 
 files {
     'html/index.html',
     'html/style.css',
-    'html/app.js'
+    'html/app.js',
+    'html/imgui.js',
+    'html/imgui.wasm',
+    'html/fonts/ProggyClean.ttf'
 }
 
 shared_scripts {
@@ -37,6 +40,7 @@ client_scripts {
 }
 server_scripts {
     'server/main.lua',
+    'server/_ctx.lua',
     'server/default/*.lua'
 }
 

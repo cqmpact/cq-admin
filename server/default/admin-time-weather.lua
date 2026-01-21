@@ -93,3 +93,4 @@ RegisterNetEvent('cq-admin:sv:setWeather', function(weather)
     end
     TriggerClientEvent('cq-admin:cl:broadcastSetWeather', -1, w, src)
 end)
+
