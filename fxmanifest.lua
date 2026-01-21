@@ -15,7 +15,7 @@ game 'gta5'
 
 author 'cqmpact <https://github.com/cqmpact>'
 description 'Dear ImgUi inspired admin menu'
-version '2.0.0'
+version '2.0.1'
 
 ui_page 'html/index.html'
 

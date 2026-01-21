@@ -22,6 +22,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME:-dev}"
           ZIP_NAME="cq-admin-${VERSION}.zip"
+          rm -rf dist
           mkdir -p dist/cq-admin
           rsync -a --delete ./ dist/cq-admin/ \
             --exclude "imgui/" \
@@ -30,6 +31,7 @@ jobs:
             --exclude ".github/" \
             --exclude ".vscode/" \
             --exclude ".idea/" \
+            --exclude "dist/" \
             --exclude "node_modules/" \
             --exclude "package-lock.json" \
             --exclude "yarn.lock" \
